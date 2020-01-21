@@ -2,7 +2,7 @@ HEX    := pwm_led
 CHIP   := 12F683
 
 SRCDIR := src
-SRCS   := $(SRCDIR)/*.c
+SRCS   := $(shell find $(SRCDIR) -type f -name *.c)
 OUTDIR := build
 BIN    := $(OUTDIR)/$(HEX).hex
 LOGS   := log.* MPLABXLog.xml*

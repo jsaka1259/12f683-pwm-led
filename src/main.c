@@ -16,11 +16,15 @@
 #define _XTAL_FREQ 8000000
 #endif
 
-uint8_t cnt  = 0;
-uint8_t duty = 255;
-int8_t  step = -1;
+#define SW        GP3
+#define SW_ON     0x01
+#define CHATT_CNT 3
 
 void __interrupt() isr(void) {
+  static uint8_t cnt  = 0;
+  static uint8_t duty = 255;
+  static int8_t  step = -1;
+
   if (T1IF) {
     TMR1H = 0xec;
     TMR1L = 0x78;
@@ -34,6 +38,36 @@ void __interrupt() isr(void) {
     GP0  = (cnt <= duty) ? 1 : 0;
     T2IF = 0;
   }
+}
+
+uint8_t read_sw(void) {
+  static uint8_t sw;
+  static uint8_t sw_cnt[2];
+
+  if ((sw & SW_ON) == 0) {
+    if (SW == 0)
+      sw_cnt[0]++;
+    else
+      sw_cnt[0] = 0;
+
+    if (sw_cnt[0] > CHATT_CNT) {
+      sw_cnt[0] = 0;
+      sw |= SW_ON;
+      return sw;
+    }
+  } else {
+    if (SW == 1)
+      sw_cnt[1]++;
+    else
+      sw_cnt[1] = 0;
+
+    if (sw_cnt[1] > CHATT_CNT) {
+      sw_cnt[1] = 0;
+      sw &= ~SW_ON;
+    }
+  }
+
+  return 0;
 }
 
 void main(void) {
@@ -60,12 +94,10 @@ void main(void) {
   TMR1ON = 0;
   TMR2ON = 1;
 
+  uint8_t sw = 0;
+
   while(1) {
-    if (GP3 == 0) {
-      TMR1ON = TMR1ON ^ 1;
-      while (GP3 == 0);
-      __delay_ms(50);
-    }
+    sw = read_sw();
+    TMR1ON = sw & SW_ON ? TMR1ON ^ 1 : TMR1ON;
   }
 }
-
